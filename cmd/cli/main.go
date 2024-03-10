@@ -28,6 +28,9 @@ func run(ctx context.Context) error {
 	useragent := "vrc-social-notifier/0.1.0"
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
+	subscriber.OnFriendActive = func(event streaming.FriendActiveEvent) {
+		fmt.Printf("FriendActive: %s\n", event.User.DisplayName)
+	}
 	subscriber.OnFriendOnline = func(event streaming.FriendOnlineEvent) {
 		fmt.Printf("FriendOnline: %s\n", event.User.DisplayName)
 	}

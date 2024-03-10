@@ -8,6 +8,7 @@ import (
 )
 
 type VRChatStreamingSubscriber struct {
+	OnFriendActive  func(FriendActiveEvent)
 	OnFriendOnline  func(FriendOnlineEvent)
 	OnFriendOffline func(FriendOfflineEvent)
 }
@@ -37,6 +38,15 @@ func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {
 		return fmt.Errorf("unmarshal json: %w", err)
 	}
 	switch meta.Type {
+	case "friend-active":
+		payload := FriendActiveEvent{}
+		if err := json.Unmarshal([]byte(meta.Content), &payload); err != nil {
+			return fmt.Errorf("unmarshal json: %w", err)
+		}
+		if s.OnFriendActive != nil {
+			s.OnFriendActive(payload)
+		}
+
 	case "friend-online":
 		payload := FriendOnlineEvent{}
 		if err := json.Unmarshal([]byte(meta.Content), &payload); err != nil {
