@@ -8,9 +8,10 @@ import (
 )
 
 type VRChatStreamingSubscriber struct {
-	OnFriendActive  func(FriendActiveEvent)
-	OnFriendOnline  func(FriendOnlineEvent)
-	OnFriendOffline func(FriendOfflineEvent)
+	OnMessageReceived func(string)
+	OnFriendActive    func(FriendActiveEvent)
+	OnFriendOnline    func(FriendOnlineEvent)
+	OnFriendOffline   func(FriendOfflineEvent)
 }
 
 func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) error {
@@ -30,6 +31,10 @@ func Subscribe(ctx context.Context, authToken string, useragent string, subscrib
 }
 
 func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {
+	if s.OnMessageReceived != nil {
+		s.OnMessageReceived(msg)
+	}
+
 	meta := struct {
 		Type    string `json:"type"`
 		Content string `json:"content"`
