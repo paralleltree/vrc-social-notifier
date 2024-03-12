@@ -15,14 +15,16 @@ type VRChatStreamingSubscriber struct {
 	OnFriendOffline   func(FriendOfflineEvent)
 }
 
-func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) {
+func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) <-chan struct{} {
 	ch := connectToVRChatStreaming(ctx, authToken, useragent, 5*time.Second)
+	connClosed := make(chan struct{})
 	onError := func(message string, err error) {
 		if subscriber.OnError != nil {
 			subscriber.OnError(message, err)
 		}
 	}
 	go func() {
+		defer close(connClosed)
 		for msg := range ch {
 			if msg.Err != nil {
 				if subscriber.OnError != nil {
@@ -34,6 +36,7 @@ func Subscribe(ctx context.Context, authToken string, useragent string, subscrib
 			}
 		}
 	}()
+	return connClosed
 }
 
 func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {

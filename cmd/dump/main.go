@@ -45,8 +45,11 @@ func run(ctx context.Context) error {
 		cancel()
 	}
 
-	streaming.Subscribe(ctx, authToken, useragent, subscriber)
+	connClosed := streaming.Subscribe(ctx, authToken, useragent, subscriber)
 	<-ctx.Done()
+	fmt.Fprintf(os.Stderr, "shutting down...\n")
+	<-connClosed
+	fmt.Fprintf(os.Stderr, "exiting\n")
 	return nil
 }
 

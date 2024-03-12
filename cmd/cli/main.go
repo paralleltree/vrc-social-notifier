@@ -42,7 +42,8 @@ func run(ctx context.Context) error {
 		fmt.Printf("FriendOffline: %s\n", event.UserId)
 	}
 
-	streaming.Subscribe(ctx, authToken, useragent, subscriber)
+	connClosed := streaming.Subscribe(ctx, authToken, useragent, subscriber)
 	<-ctx.Done()
+	<-connClosed
 	return nil
 }
