@@ -9,25 +9,31 @@ import (
 
 type VRChatStreamingSubscriber struct {
 	OnMessageReceived func(string)
+	OnError           func(string, error)
 	OnFriendActive    func(FriendActiveEvent)
 	OnFriendOnline    func(FriendOnlineEvent)
 	OnFriendOffline   func(FriendOfflineEvent)
 }
 
-func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) {
 	ch := connectToVRChatStreaming(ctx, authToken, useragent, 5*time.Second)
-	for msg := range ch {
-		if msg.Err != nil {
-			return msg.Err
-		}
-		if err := subscriber.processVRChatEvent(msg.Value); err != nil {
-			return err
+	onError := func(message string, err error) {
+		if subscriber.OnError != nil {
+			subscriber.OnError(message, err)
 		}
 	}
-	return nil
+	go func() {
+		for msg := range ch {
+			if msg.Err != nil {
+				if subscriber.OnError != nil {
+					onError(msg.Value, msg.Err)
+				}
+			}
+			if err := subscriber.processVRChatEvent(msg.Value); err != nil {
+				onError(msg.Value, err)
+			}
+		}
+	}()
 }
 
 func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {

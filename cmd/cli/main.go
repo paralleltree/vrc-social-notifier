@@ -28,6 +28,10 @@ func run(ctx context.Context) error {
 	useragent := "vrc-social-notifier/0.1.0"
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
+	subscriber.OnError = func(message string, err error) {
+		fmt.Fprintf(os.Stderr, "%s\n", message)
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+	}
 	subscriber.OnFriendActive = func(event streaming.FriendActiveEvent) {
 		fmt.Printf("FriendActive: %s\n", event.User.DisplayName)
 	}
@@ -38,9 +42,7 @@ func run(ctx context.Context) error {
 		fmt.Printf("FriendOffline: %s\n", event.UserId)
 	}
 
-	if err := streaming.Subscribe(ctx, authToken, useragent, subscriber); err != nil {
-		return err
-	}
+	streaming.Subscribe(ctx, authToken, useragent, subscriber)
 	<-ctx.Done()
 	return nil
 }

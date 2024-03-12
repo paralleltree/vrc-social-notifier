@@ -14,21 +14,18 @@ type streamingEvent struct {
 	Err   error
 }
 
-func connectToWebSocket(url string, useragent string) (*websocket.Conn, func(), error) {
+func connectToWebSocket(url string, useragent string) (*websocket.Conn, error) {
 	conf, err := websocket.NewConfig(url, "http://localhost/")
 	conf.Dialer = &net.Dialer{}
 	if err != nil {
-		return nil, nil, fmt.Errorf("create websocket config: %w", err)
+		return nil, fmt.Errorf("create websocket config: %w", err)
 	}
 	conf.Header.Add("User-Agent", useragent)
 	ws, err := websocket.DialConfig(conf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dial websocket: %w", err)
+		return nil, fmt.Errorf("dial websocket: %w", err)
 	}
-	cancel := func() {
-		ws.Close()
-	}
-	return ws, cancel, nil
+	return ws, nil
 }
 
 func connectToVRChatStreaming(ctx context.Context, authToken string, useragent string, reconnectInterval time.Duration) <-chan streamingEvent {
@@ -43,7 +40,7 @@ func connectToVRChatStreaming(ctx context.Context, authToken string, useragent s
 				return
 
 			default:
-				ws, cancel, err := connectToWebSocket(url, useragent)
+				ws, err := connectToWebSocket(url, useragent)
 				if err != nil {
 					ch <- streamingEvent{Err: err}
 
@@ -55,14 +52,13 @@ func connectToVRChatStreaming(ctx context.Context, authToken string, useragent s
 						continue
 					}
 				}
-				defer cancel()
 
-				for {
-					select {
-					case <-ctx.Done():
-						return
+				connClosed := make(chan struct{})
+				go func() {
+					defer close(connClosed)
+					defer ws.Close()
 
-					default:
+					for {
 						var msg string
 						if err := websocket.Message.Receive(ws, &msg); err != nil {
 							ch <- streamingEvent{Err: err}
@@ -70,6 +66,14 @@ func connectToVRChatStreaming(ctx context.Context, authToken string, useragent s
 						}
 						ch <- streamingEvent{Value: msg}
 					}
+				}()
+
+				select {
+				case <-ctx.Done():
+					ws.Close()
+
+				case <-connClosed:
+					continue
 				}
 			}
 		}

@@ -23,6 +23,9 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	authToken := os.Getenv("VRC_AUTH_TOKEN")
 	if authToken == "" {
 		return fmt.Errorf("VRC_AUTH_TOKEN is required")
@@ -36,10 +39,13 @@ func run(ctx context.Context) error {
 			fmt.Fprintf(os.Stderr, "process message: %v\n", err)
 		}
 	}
-
-	if err := streaming.Subscribe(ctx, authToken, useragent, subscriber); err != nil {
-		return err
+	subscriber.OnError = func(message string, err error) {
+		fmt.Fprintf(os.Stderr, "%s\n", message)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		cancel()
 	}
+
+	streaming.Subscribe(ctx, authToken, useragent, subscriber)
 	<-ctx.Done()
 	return nil
 }
