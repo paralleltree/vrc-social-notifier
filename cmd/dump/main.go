@@ -53,11 +53,10 @@ func processMessage(msg string) error {
 		return fmt.Errorf("unmarshal message: %w", err)
 	}
 
-	content := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(payload.Content), &content); err != nil {
-		return fmt.Errorf("unmarshal content: %w", err)
+	contentMap, err := convertMessageContentToFlatMap(payload.Type, payload.Content)
+	if err != nil {
+		return err
 	}
-	contentMap := convertMapKeyToFlat("", content)
 
 	logLine := map[string]interface{}{
 		"time":         time.Now(),
@@ -66,7 +65,7 @@ func processMessage(msg string) error {
 	}
 
 	for k, v := range contentMap {
-		logLine[fmt.Sprintf("message.content.%s", k)] = v
+		logLine[fmt.Sprintf("message.%s", k)] = v
 	}
 
 	bytes, err := json.Marshal(logLine)
@@ -76,6 +75,22 @@ func processMessage(msg string) error {
 
 	fmt.Println(string(bytes))
 	return nil
+}
+
+func convertMessageContentToFlatMap(messageType, content string) (map[string]interface{}, error) {
+	switch messageType {
+	case "see-notification", "hide-notification":
+		return map[string]interface{}{
+			"content": content,
+		}, nil
+
+	default:
+		contentMap := map[string]interface{}{}
+		if err := json.Unmarshal([]byte(content), &contentMap); err != nil {
+			return nil, fmt.Errorf("unmarshal content: %w", err)
+		}
+		return convertMapKeyToFlat("content", contentMap), nil
+	}
 }
 
 func convertMapKeyToFlat(parentKey string, v map[string]interface{}) map[string]interface{} {
