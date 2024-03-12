@@ -32,6 +32,7 @@ func run(ctx context.Context) error {
 	subscriber := &streaming.VRChatStreamingSubscriber{}
 	subscriber.OnMessageReceived = func(event string) {
 		if err := processMessage(event); err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", event)
 			fmt.Fprintf(os.Stderr, "process message: %v\n", err)
 		}
 	}
