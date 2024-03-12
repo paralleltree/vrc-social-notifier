@@ -62,7 +62,7 @@ func connectToVRChatStreaming(ctx context.Context, authToken string, useragent s
 						var msg string
 						if err := websocket.Message.Receive(ws, &msg); err != nil {
 							ch <- streamingEvent{Err: err}
-							break
+							return
 						}
 						ch <- streamingEvent{Value: msg}
 					}

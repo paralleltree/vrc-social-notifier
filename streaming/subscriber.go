@@ -30,6 +30,7 @@ func Subscribe(ctx context.Context, authToken string, useragent string, subscrib
 				if subscriber.OnError != nil {
 					onError(msg.Value, msg.Err)
 				}
+				continue
 			}
 			if err := subscriber.processVRChatEvent(msg.Value); err != nil {
 				onError(msg.Value, err)
