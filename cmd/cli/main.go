@@ -41,6 +41,9 @@ func run(ctx context.Context) error {
 	subscriber.OnFriendOffline = func(event streaming.FriendOfflineEvent) {
 		fmt.Printf("FriendOffline: %s\n", event.UserId)
 	}
+	subscriber.OnFriendLocation = func(event streaming.FriendLocationEvent) {
+		fmt.Printf("FriendLocation: user: %s, location: %s, travelingToLocation: %s, instance: %s\n", event.User.DisplayName, event.Location, event.TravelingToLocation, event.Instance)
+	}
 
 	connClosed := streaming.Subscribe(ctx, authToken, useragent, subscriber)
 	<-ctx.Done()

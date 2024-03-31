@@ -14,6 +14,7 @@ type VRChatStreamingSubscriber struct {
 	OnFriendActive    func(FriendActiveEvent)
 	OnFriendOnline    func(FriendOnlineEvent)
 	OnFriendOffline   func(FriendOfflineEvent)
+	OnFriendLocation  func(FriendLocationEvent)
 }
 
 func Subscribe(ctx context.Context, authToken string, useragent string, subscriber *VRChatStreamingSubscriber) <-chan struct{} {
@@ -85,6 +86,15 @@ func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {
 		}
 		if s.OnFriendOffline != nil {
 			s.OnFriendOffline(payload)
+		}
+
+	case "friend-location":
+		payload := FriendLocationEvent{}
+		if err := json.Unmarshal([]byte(meta.Content), &payload); err != nil {
+			return fmt.Errorf("unmarshal json: %w", err)
+		}
+		if s.OnFriendLocation != nil {
+			s.OnFriendLocation(payload)
 		}
 
 	default:

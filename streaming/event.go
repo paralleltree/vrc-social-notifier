@@ -19,3 +19,18 @@ type FriendOnlineEvent struct {
 type FriendOfflineEvent struct {
 	UserId string `json:"userId"`
 }
+
+type FriendLocationEvent struct {
+	UserId string `json:"userId"`
+	User   User   `json:"user"`
+
+	Location string `json:"location"`
+
+	TravelingToLocation string `json:"travelingToLocation"`
+
+	Instance string `json:"instance"`
+
+	WorldId string `json:"worldId"`
+
+	CanRequestInvite bool `json:"canRequestInvite"`
+}
