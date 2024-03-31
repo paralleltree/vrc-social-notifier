@@ -32,6 +32,9 @@ func run(ctx context.Context) error {
 		fmt.Fprintf(os.Stderr, "%s\n", message)
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 	}
+	subscriber.OnUserLocation = func(event streaming.UserLocationEvent) {
+		fmt.Printf("UserLocation: user: %s, location: %s, instance: %s, world: %s\n", event.User.DisplayName, event.Location, event.Instance, event.WorldId)
+	}
 	subscriber.OnFriendActive = func(event streaming.FriendActiveEvent) {
 		fmt.Printf("FriendActive: %s\n", event.User.DisplayName)
 	}

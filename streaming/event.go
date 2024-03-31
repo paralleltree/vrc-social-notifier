@@ -6,6 +6,14 @@ type User struct {
 	InstanceID  string `json:"instanceId"`
 }
 
+type UserLocationEvent struct {
+	UserId   string `json:"userId"`
+	User     User   `json:"user"`
+	Location string `json:"location"`
+	Instance string `json:"instance"`
+	WorldId  string `json:"worldId"`
+}
+
 type FriendActiveEvent struct {
 	UserId string `json:"userId"`
 	User   User   `json:"user"`
