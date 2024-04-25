@@ -8,6 +8,7 @@ import (
 )
 
 type VRChatStreamingSubscriber struct {
+	OnConnected       func()
 	OnMessageReceived func(string)
 	OnError           func(string, error)
 	OnFriendActive    func(FriendActiveEvent)
@@ -29,6 +30,12 @@ func Subscribe(ctx context.Context, authToken string, useragent string, subscrib
 			if msg.Err != nil {
 				if subscriber.OnError != nil {
 					onError(msg.Value, msg.Err)
+				}
+				continue
+			}
+			if msg.Connected {
+				if subscriber.OnConnected != nil {
+					subscriber.OnConnected()
 				}
 				continue
 			}

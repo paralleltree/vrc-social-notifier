@@ -10,8 +10,9 @@ import (
 )
 
 type streamingEvent struct {
-	Value string
-	Err   error
+	Connected bool
+	Value     string
+	Err       error
 }
 
 func connectToWebSocket(url string, useragent string) (*websocket.Conn, error) {
@@ -53,6 +54,7 @@ func connectToVRChatStreaming(ctx context.Context, authToken string, useragent s
 					}
 				}
 
+				ch <- streamingEvent{Connected: true}
 				connClosed := make(chan struct{})
 				go func() {
 					defer close(connClosed)

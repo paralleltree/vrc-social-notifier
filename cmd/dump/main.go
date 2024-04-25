@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -33,7 +34,12 @@ func run(ctx context.Context) error {
 	}
 	useragent := "paltee.dev/0.1.0"
 
+	connected := atomic.Bool{}
 	subscriber := &streaming.VRChatStreamingSubscriber{}
+	subscriber.OnConnected = func() {
+		connected.Store(true)
+		fmt.Fprintf(os.Stderr, "connected\n")
+	}
 	subscriber.OnMessageReceived = func(event string) {
 		if err := processMessage(event); err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", event)
@@ -41,6 +47,7 @@ func run(ctx context.Context) error {
 		}
 	}
 	subscriber.OnError = func(message string, err error) {
+		connected.Store(false)
 		fmt.Fprintf(os.Stderr, "%s\n", message)
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		cancel()
@@ -49,7 +56,7 @@ func run(ctx context.Context) error {
 	connClosed := streaming.Subscribe(ctx, authToken, useragent, subscriber)
 
 	if heartbeatURL != "" {
-		startHeartbeat(ctx, heartbeatURL, 5*time.Minute)
+		startHeartbeat(ctx, heartbeatURL, 5*time.Minute, func() bool { return connected.Load() })
 	}
 
 	<-ctx.Done()
@@ -132,9 +139,32 @@ func convertMapKeyToFlat(parentKey string, v map[string]interface{}) map[string]
 	return result
 }
 
-func startHeartbeat(ctx context.Context, heartbeatEndpoint string, interval time.Duration) {
+func startHeartbeat(ctx context.Context, heartbeatEndpoint string, interval time.Duration, aliveFunc func() bool) {
 	heartbeat := NewBetterStackHeartbeat(heartbeatEndpoint)
 	go func(ctx context.Context) {
+		// wait for the process to be ready
+		initCh := make(chan bool)
+		go func(ctx context.Context) {
+			defer close(initCh)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-time.After(time.Second):
+					if aliveFunc() {
+						initCh <- true
+						return
+					}
+				}
+			}
+		}(ctx)
+
+		initSuccess, ok := <-initCh
+		if !ok || !initSuccess {
+			return // failed to initialize
+		}
+
 		heartbeat.SendHeartbeat(ctx)
 		for {
 			select {
@@ -142,7 +172,9 @@ func startHeartbeat(ctx context.Context, heartbeatEndpoint string, interval time
 				return
 
 			case <-time.After(interval):
-				heartbeat.SendHeartbeat(ctx)
+				if aliveFunc() {
+					heartbeat.SendHeartbeat(ctx)
+				}
 			}
 		}
 	}(ctx)
