@@ -135,6 +135,7 @@ func convertMapKeyToFlat(parentKey string, v map[string]interface{}) map[string]
 func startHeartbeat(ctx context.Context, heartbeatEndpoint string, interval time.Duration) {
 	heartbeat := NewBetterStackHeartbeat(heartbeatEndpoint)
 	go func(ctx context.Context) {
+		heartbeat.SendHeartbeat(ctx)
 		for {
 			select {
 			case <-ctx.Done():
