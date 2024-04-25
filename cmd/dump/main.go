@@ -26,6 +26,7 @@ func run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	heartbeatURL := os.Getenv("HEARTBEAT_URL")
 	authToken := os.Getenv("VRC_AUTH_TOKEN")
 	if authToken == "" {
 		return fmt.Errorf("VRC_AUTH_TOKEN is required")
@@ -46,6 +47,11 @@ func run(ctx context.Context) error {
 	}
 
 	connClosed := streaming.Subscribe(ctx, authToken, useragent, subscriber)
+
+	if heartbeatURL != "" {
+		startHeartbeat(ctx, heartbeatURL, 5*time.Minute)
+	}
+
 	<-ctx.Done()
 	fmt.Fprintf(os.Stderr, "shutting down...\n")
 	<-connClosed
@@ -124,4 +130,19 @@ func convertMapKeyToFlat(parentKey string, v map[string]interface{}) map[string]
 
 	walkAndConvert(parentKey, v)
 	return result
+}
+
+func startHeartbeat(ctx context.Context, heartbeatEndpoint string, interval time.Duration) {
+	heartbeat := NewBetterStackHeartbeat(heartbeatEndpoint)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-time.After(interval):
+				heartbeat.SendHeartbeat(ctx)
+			}
+		}
+	}(ctx)
 }
