@@ -40,6 +40,11 @@ func (b *notificationBuilder) SetTitle(title string) *notificationBuilder {
 	return b
 }
 
+func (b *notificationBuilder) SetBody(body string) *notificationBuilder {
+	b.Notification.Content = body
+	return b
+}
+
 func (b *notificationBuilder) SetContent(content string) *notificationBuilder {
 	b.Notification.Content = content
 	return b

@@ -71,6 +71,7 @@ func run(ctx context.Context) error {
 	}()
 
 	feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh(), inboxCh)
+	feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), inboxCh)
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
 	subscriber.OnError = func(message string, err error) {

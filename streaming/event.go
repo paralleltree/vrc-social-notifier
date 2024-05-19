@@ -1,9 +1,11 @@
 package streaming
 
 type User struct {
-	DisplayName string `json:"displayName"`
-	ID          string `json:"id"`
-	InstanceID  string `json:"instanceId"`
+	DisplayName       string `json:"displayName"`
+	ID                string `json:"id"`
+	InstanceID        string `json:"instanceId"`
+	Status            string `json:"status"`
+	StatusDescription string `json:"statusDescription"`
 }
 
 type UserLocationEvent struct {
