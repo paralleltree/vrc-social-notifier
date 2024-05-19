@@ -85,6 +85,9 @@ func run(ctx context.Context) error {
 	subscriber.OnFriendActive = func(event streaming.FriendActiveEvent) {
 		fmt.Printf("FriendActive: %s\n", event.User.DisplayName)
 	}
+	subscriber.OnFriendUpdate = func(event streaming.FriendUpdateEvent) {
+		fmt.Printf("FriendUpdate: %s(%s: %s)\n", event.User.DisplayName, event.User.Status, event.User.StatusDescription)
+	}
 	subscriber.OnFriendOnline = func(event streaming.FriendOnlineEvent) {
 		fmt.Printf("FriendOnline: %s\n", event.User.DisplayName)
 	}

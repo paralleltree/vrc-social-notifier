@@ -8,6 +8,11 @@ type User struct {
 	StatusDescription string `json:"statusDescription"`
 }
 
+type FriendUpdateEvent struct {
+	UserId string `json:"userId"`
+	User   User   `json:"user"`
+}
+
 type UserLocationEvent struct {
 	UserId   string `json:"userId"`
 	User     User   `json:"user"`

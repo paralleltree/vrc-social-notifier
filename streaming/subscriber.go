@@ -13,6 +13,7 @@ type VRChatStreamingSubscriber struct {
 	OnError           func(string, error)
 	OnUserLocation    func(UserLocationEvent)
 	OnFriendActive    func(FriendActiveEvent)
+	OnFriendUpdate    func(FriendUpdateEvent)
 	OnFriendOnline    func(FriendOnlineEvent)
 	OnFriendOffline   func(FriendOfflineEvent)
 	OnFriendLocation  func(FriendLocationEvent)
@@ -69,6 +70,15 @@ func (s *VRChatStreamingSubscriber) processVRChatEvent(msg string) error {
 		}
 		if s.OnUserLocation != nil {
 			s.OnUserLocation(payload)
+		}
+
+	case "friend-update":
+		payload := FriendUpdateEvent{}
+		if err := json.Unmarshal([]byte(meta.Content), &payload); err != nil {
+			return fmt.Errorf("unmarshal json: %w", err)
+		}
+		if s.OnFriendUpdate != nil {
+			s.OnFriendUpdate(payload)
 		}
 
 	case "friend-active":
