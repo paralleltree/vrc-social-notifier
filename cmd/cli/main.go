@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/paralleltree/vrc-social-notifier/feat"
 	"github.com/paralleltree/vrc-social-notifier/streaming"
 	"github.com/paralleltree/vrc-social-notifier/xsoverlay"
 )
@@ -19,6 +20,17 @@ func main() {
 	if err := run(ctx); err != nil {
 		log.Fatalf("%v", err)
 	}
+}
+
+func makeChGenerator[T any]() (func() chan T, func() []chan T) {
+	chs := []chan T{}
+	return func() chan T {
+			ch := make(chan T)
+			chs = append(chs, ch)
+			return ch
+		}, func() []chan T {
+			return chs
+		}
 }
 
 func run(ctx context.Context) error {
@@ -40,7 +52,25 @@ func run(ctx context.Context) error {
 	userLocationCh := make(chan streaming.UserLocationEvent)
 	friendLocationCh := make(chan streaming.FriendLocationEvent)
 
-	notifyFriendJoining(ctx, userLocationCh, friendLocationCh, inboxCh)
+	makeSendUserLocationCh, sendUserLocationChs := makeChGenerator[streaming.UserLocationEvent]()
+	makeSendFriendLocationCh, sendFriendLocationChs := makeChGenerator[streaming.FriendLocationEvent]()
+
+	go func() {
+		for e := range userLocationCh {
+			for _, ch := range sendUserLocationChs() {
+				ch <- e
+			}
+		}
+	}()
+	go func() {
+		for e := range friendLocationCh {
+			for _, ch := range sendFriendLocationChs() {
+				ch <- e
+			}
+		}
+	}()
+
+	feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh(), inboxCh)
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
 	subscriber.OnError = func(message string, err error) {
@@ -69,35 +99,4 @@ func run(ctx context.Context) error {
 	<-ctx.Done()
 	<-connClosed
 	return nil
-}
-
-func notifyFriendJoining(
-	ctx context.Context,
-	userLocationCh <-chan streaming.UserLocationEvent,
-	friendLocationCh <-chan streaming.FriendLocationEvent,
-	notifyCh chan<- xsoverlay.Notification,
-) {
-	currentLocation := ""
-	notifyCh <- xsoverlay.NewNotificationBuilder().SetTitle("VRC Social Notification enabled").Build()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-
-			case userLocation := <-userLocationCh:
-				if userLocation.Location != currentLocation {
-					currentLocation = userLocation.Location
-				}
-
-			case friendLocation := <-friendLocationCh:
-				if friendLocation.Location == "traveling" && currentLocation == friendLocation.TravelingToLocation {
-					n := xsoverlay.NewNotificationBuilder().
-						SetTitle(fmt.Sprintf("Friend Joining: %s", friendLocation.User.DisplayName)).
-						Build()
-					notifyCh <- n
-				}
-			}
-		}
-	}()
 }
