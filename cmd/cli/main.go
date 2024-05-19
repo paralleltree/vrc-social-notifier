@@ -51,9 +51,11 @@ func run(ctx context.Context) error {
 
 	userLocationCh := make(chan streaming.UserLocationEvent)
 	friendLocationCh := make(chan streaming.FriendLocationEvent)
+	friendUpdateCh := make(chan streaming.FriendUpdateEvent)
 
 	makeSendUserLocationCh, sendUserLocationChs := makeChGenerator[streaming.UserLocationEvent]()
 	makeSendFriendLocationCh, sendFriendLocationChs := makeChGenerator[streaming.FriendLocationEvent]()
+	makeSendFriendUpdateCh, sendFriendUpdateChs := makeChGenerator[streaming.FriendUpdateEvent]()
 
 	go func() {
 		for e := range userLocationCh {
@@ -69,9 +71,16 @@ func run(ctx context.Context) error {
 			}
 		}
 	}()
+	go func() {
+		for e := range friendUpdateCh {
+			for _, ch := range sendFriendUpdateChs() {
+				ch <- e
+			}
+		}
+	}()
 
 	feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh(), inboxCh)
-	feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), inboxCh)
+	feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), makeSendFriendUpdateCh(), inboxCh)
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
 	subscriber.OnError = func(message string, err error) {
@@ -87,6 +96,7 @@ func run(ctx context.Context) error {
 	}
 	subscriber.OnFriendUpdate = func(event streaming.FriendUpdateEvent) {
 		fmt.Printf("FriendUpdate: %s(%s: %s)\n", event.User.DisplayName, event.User.Status, event.User.StatusDescription)
+		friendUpdateCh <- event
 	}
 	subscriber.OnFriendOnline = func(event streaming.FriendOnlineEvent) {
 		fmt.Printf("FriendOnline: %s\n", event.User.DisplayName)

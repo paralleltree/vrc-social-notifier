@@ -11,10 +11,25 @@ import (
 func NotifyFriendStatusChange(
 	ctx context.Context,
 	friendLocationCh <-chan streaming.FriendLocationEvent,
+	friendUpdateCh <-chan streaming.FriendUpdateEvent,
 	notifyCh chan<- xsoverlay.Notification,
 ) {
 	statusMap := map[string]string{}
 	notifyCh <- xsoverlay.NewNotificationBuilder().SetTitle("NotifyFriendStatusChange enabled").Build()
+
+	onStatusUpdate := func(user streaming.User) {
+		if prevStatus, ok := statusMap[user.ID]; ok {
+			if prevStatus != user.Status {
+				n := xsoverlay.NewNotificationBuilder().
+					SetTitle(fmt.Sprintf("User %s status changed to %s", user.DisplayName, user.Status)).
+					SetBody(user.StatusDescription).
+					Build()
+				notifyCh <- n
+			}
+		}
+		statusMap[user.ID] = user.Status
+	}
+
 	go func() {
 		for {
 			select {
@@ -22,16 +37,10 @@ func NotifyFriendStatusChange(
 				return
 
 			case friendLocation := <-friendLocationCh:
-				if prevStatus, ok := statusMap[friendLocation.User.ID]; ok {
-					if prevStatus != friendLocation.User.Status {
-						n := xsoverlay.NewNotificationBuilder().
-							SetTitle(fmt.Sprintf("User %s status changed to %s", friendLocation.User.DisplayName, friendLocation.User.Status)).
-							SetBody(friendLocation.User.StatusDescription).
-							Build()
-						notifyCh <- n
-					}
-				}
-				statusMap[friendLocation.User.ID] = friendLocation.User.Status
+				onStatusUpdate(friendLocation.User)
+
+			case friendUpdate := <-friendUpdateCh:
+				onStatusUpdate(friendUpdate.User)
 			}
 		}
 	}()
