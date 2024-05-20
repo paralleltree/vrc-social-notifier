@@ -21,8 +21,7 @@ func NotifyFriendStatusChange(
 		if prevStatus, ok := statusMap[user.ID]; ok {
 			if prevStatus != user.Status {
 				n := xsoverlay.NewNotificationBuilder().
-					SetTitle(fmt.Sprintf("User %s status changed to %s", user.DisplayName, user.Status)).
-					SetBody(user.StatusDescription).
+					SetTitle(fmt.Sprintf("%s's status changed to %s", user.DisplayName, user.Status)).
 					Build()
 				notifyCh <- n
 			}
