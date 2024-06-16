@@ -15,8 +15,6 @@ func NotifyFriendStatusChange(
 	notifyCh chan<- xsoverlay.Notification,
 ) {
 	statusMap := map[string]string{}
-	notifyCh <- xsoverlay.NewNotificationBuilder().SetTitle("NotifyFriendStatusChange enabled").Build()
-
 	onStatusUpdate := func(user streaming.User) {
 		if prevStatus, ok := statusMap[user.ID]; ok {
 			if prevStatus != user.Status {

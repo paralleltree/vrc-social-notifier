@@ -15,7 +15,6 @@ func NotifyFriendJoining(
 	notifyCh chan<- xsoverlay.Notification,
 ) {
 	currentLocation := ""
-	notifyCh <- xsoverlay.NewNotificationBuilder().SetTitle("VRC Social Notification enabled").Build()
 	go func() {
 		for {
 			select {
