@@ -2,12 +2,10 @@ package feat_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/paralleltree/vrc-social-notifier/feat"
 	"github.com/paralleltree/vrc-social-notifier/streaming"
-	"github.com/paralleltree/vrc-social-notifier/xsoverlay"
 )
 
 func TestNotifyFriendJoining(t *testing.T) {
@@ -17,14 +15,21 @@ func TestNotifyFriendJoining(t *testing.T) {
 	friendName := "TestFriend_deadbeef"
 	locationID := "loc_test"
 
+	wantResult := feat.FriendJoiningEvent{
+		User: streaming.User{
+			ID:          friendID,
+			DisplayName: friendName,
+		},
+	}
+	wantResults := []feat.FriendJoiningEvent{wantResult}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	friendLocationCh := make(chan streaming.FriendLocationEvent)
 	userLocationCh := make(chan streaming.UserLocationEvent)
-	notifyCh := make(chan xsoverlay.Notification)
 
 	// act
-	feat.NotifyFriendJoining(ctx, userLocationCh, friendLocationCh, notifyCh)
+	notifyCh := feat.NotifyFriendJoining(ctx, userLocationCh, friendLocationCh)
 
 	go func() {
 		defer cancel()
@@ -38,14 +43,22 @@ func TestNotifyFriendJoining(t *testing.T) {
 			Location:            "traveling",
 			TravelingToLocation: locationID,
 			User: streaming.User{
+				ID:          friendID,
 				DisplayName: friendName,
 			},
 		}
 	}()
 
-	result := <-notifyCh
+	gotResults := consumeChannel(notifyCh)
 
-	if !strings.Contains(result.Title, friendName) {
-		t.Fatalf("unexpected notification: string `%s` was not found in notification title, got %s", friendName, result.Title)
+	// assert
+	if len(wantResults) != len(gotResults) {
+		t.Fatalf("unexpected notification size: want %d, but got %d", len(wantResults), len(gotResults))
+	}
+
+	for i, gotResult := range gotResults {
+		if wantResults[i].User.ID != gotResult.User.ID {
+			t.Fatalf("unexpected user: want %s, but got %s", wantResults[i].User.ID, gotResult.User.ID)
+		}
 	}
 }

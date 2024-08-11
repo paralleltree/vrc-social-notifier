@@ -2,20 +2,24 @@ package feat
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/paralleltree/vrc-social-notifier/streaming"
-	"github.com/paralleltree/vrc-social-notifier/xsoverlay"
 )
+
+type FriendJoiningEvent struct {
+	User streaming.User
+}
 
 func NotifyFriendJoining(
 	ctx context.Context,
 	userLocationCh <-chan streaming.UserLocationEvent,
 	friendLocationCh <-chan streaming.FriendLocationEvent,
-	notifyCh chan<- xsoverlay.Notification,
-) {
+) <-chan FriendJoiningEvent {
+	notifyCh := make(chan FriendJoiningEvent)
 	currentLocation := ""
+
 	go func() {
+		defer close(notifyCh)
 		for {
 			select {
 			case <-ctx.Done():
@@ -28,12 +32,13 @@ func NotifyFriendJoining(
 
 			case friendLocation := <-friendLocationCh:
 				if friendLocation.Location == "traveling" && currentLocation == friendLocation.TravelingToLocation {
-					n := xsoverlay.NewNotificationBuilder().
-						SetTitle(fmt.Sprintf("Friend Joining: %s", friendLocation.User.DisplayName)).
-						Build()
-					notifyCh <- n
+					notifyCh <- FriendJoiningEvent{
+						User: friendLocation.User,
+					}
 				}
 			}
 		}
 	}()
+
+	return notifyCh
 }
