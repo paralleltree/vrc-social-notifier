@@ -27,6 +27,13 @@ func makeChGenerator[T any](source <-chan T) func() chan T {
 	chs := []chan T{}
 
 	go func() {
+		defer func() {
+			// close all created channels when source channel is closed
+			for _, ch := range chs {
+				close(ch)
+			}
+		}()
+
 		for e := range source {
 			for _, ch := range chs {
 				ch <- e

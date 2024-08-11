@@ -8,6 +8,7 @@ import (
 
 	"github.com/paralleltree/vrc-social-notifier/feat"
 	"github.com/paralleltree/vrc-social-notifier/streaming"
+	"github.com/paralleltree/vrc-social-notifier/testlib"
 )
 
 func TestNotifyFriendStatusChange(t *testing.T) {
@@ -55,7 +56,7 @@ func TestNotifyFriendStatusChange(t *testing.T) {
 		}
 	}()
 
-	gotResults := consumeChannel(notifyCh)
+	gotResults := testlib.ConsumeChannel(notifyCh)
 
 	// assert
 	if len(wantResults) != len(gotResults) {
