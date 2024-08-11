@@ -79,8 +79,24 @@ func run(ctx context.Context) error {
 		}
 	}()
 
-	feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh(), inboxCh)
-	feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), makeSendFriendUpdateCh(), inboxCh)
+	go func() {
+		friendJoiningCh := feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh())
+		for v := range friendJoiningCh {
+			n := xsoverlay.NewNotificationBuilder().
+				SetTitle(fmt.Sprintf("Friend Joining: %s", v.User.DisplayName)).
+				Build()
+			inboxCh <- n
+		}
+	}()
+	go func() {
+		friendStatusChangedCh := feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), makeSendFriendUpdateCh())
+		for v := range friendStatusChangedCh {
+			n := xsoverlay.NewNotificationBuilder().
+				SetTitle(fmt.Sprintf("%s's status changed to %s", v.User.DisplayName, v.User.Status)).
+				Build()
+			inboxCh <- n
+		}
+	}()
 
 	subscriber := &streaming.VRChatStreamingSubscriber{}
 	subscriber.OnError = func(message string, err error) {
