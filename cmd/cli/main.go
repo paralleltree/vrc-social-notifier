@@ -22,15 +22,23 @@ func main() {
 	}
 }
 
-func makeChGenerator[T any]() (func() chan T, func() []chan T) {
+// Returns function that creates new channel that receives elements from source channel
+func makeChGenerator[T any](source <-chan T) func() chan T {
 	chs := []chan T{}
-	return func() chan T {
-			ch := make(chan T)
-			chs = append(chs, ch)
-			return ch
-		}, func() []chan T {
-			return chs
+
+	go func() {
+		for e := range source {
+			for _, ch := range chs {
+				ch <- e
+			}
 		}
+	}()
+
+	return func() chan T {
+		ch := make(chan T)
+		chs = append(chs, ch)
+		return ch
+	}
 }
 
 func run(ctx context.Context) error {
@@ -53,31 +61,9 @@ func run(ctx context.Context) error {
 	friendLocationCh := make(chan streaming.FriendLocationEvent)
 	friendUpdateCh := make(chan streaming.FriendUpdateEvent)
 
-	makeSendUserLocationCh, sendUserLocationChs := makeChGenerator[streaming.UserLocationEvent]()
-	makeSendFriendLocationCh, sendFriendLocationChs := makeChGenerator[streaming.FriendLocationEvent]()
-	makeSendFriendUpdateCh, sendFriendUpdateChs := makeChGenerator[streaming.FriendUpdateEvent]()
-
-	go func() {
-		for e := range userLocationCh {
-			for _, ch := range sendUserLocationChs() {
-				ch <- e
-			}
-		}
-	}()
-	go func() {
-		for e := range friendLocationCh {
-			for _, ch := range sendFriendLocationChs() {
-				ch <- e
-			}
-		}
-	}()
-	go func() {
-		for e := range friendUpdateCh {
-			for _, ch := range sendFriendUpdateChs() {
-				ch <- e
-			}
-		}
-	}()
+	makeSendUserLocationCh := makeChGenerator(userLocationCh)
+	makeSendFriendLocationCh := makeChGenerator(friendLocationCh)
+	makeSendFriendUpdateCh := makeChGenerator(friendUpdateCh)
 
 	go func() {
 		friendJoiningCh := feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh())
