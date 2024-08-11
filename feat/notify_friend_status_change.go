@@ -2,32 +2,39 @@ package feat
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/paralleltree/vrc-social-notifier/streaming"
-	"github.com/paralleltree/vrc-social-notifier/xsoverlay"
 )
+
+type FriendStatusChangedEvent struct {
+	PreviousStatus string
+	CurrentStatus  string
+	User           streaming.User
+}
 
 func NotifyFriendStatusChange(
 	ctx context.Context,
 	friendLocationCh <-chan streaming.FriendLocationEvent,
 	friendUpdateCh <-chan streaming.FriendUpdateEvent,
-	notifyCh chan<- xsoverlay.Notification,
-) {
+) <-chan FriendStatusChangedEvent {
+	notifyCh := make(chan FriendStatusChangedEvent)
 	statusMap := map[string]string{}
 	onStatusUpdate := func(user streaming.User) {
 		if prevStatus, ok := statusMap[user.ID]; ok {
 			if prevStatus != user.Status {
-				n := xsoverlay.NewNotificationBuilder().
-					SetTitle(fmt.Sprintf("%s's status changed to %s", user.DisplayName, user.Status)).
-					Build()
-				notifyCh <- n
+				notifyCh <- FriendStatusChangedEvent{
+					PreviousStatus: prevStatus,
+					CurrentStatus:  user.Status,
+					User:           user,
+				}
 			}
 		}
 		statusMap[user.ID] = user.Status
 	}
 
 	go func() {
+		defer close(notifyCh)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -41,4 +48,6 @@ func NotifyFriendStatusChange(
 			}
 		}
 	}()
+
+	return notifyCh
 }
