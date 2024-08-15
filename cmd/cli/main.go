@@ -72,8 +72,10 @@ func run(ctx context.Context) error {
 	makeSendFriendLocationCh := makeChGenerator(friendLocationCh)
 	makeSendFriendUpdateCh := makeChGenerator(friendUpdateCh)
 
+	friendJoiningCh := feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh())
+	friendStatusChangedCh := feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), makeSendFriendUpdateCh())
+
 	go func() {
-		friendJoiningCh := feat.NotifyFriendJoining(ctx, makeSendUserLocationCh(), makeSendFriendLocationCh())
 		for v := range friendJoiningCh {
 			n := xsoverlay.NewNotificationBuilder().
 				SetTitle(fmt.Sprintf("Friend Joining: %s", v.User.DisplayName)).
@@ -81,8 +83,8 @@ func run(ctx context.Context) error {
 			inboxCh <- n
 		}
 	}()
+
 	go func() {
-		friendStatusChangedCh := feat.NotifyFriendStatusChange(ctx, makeSendFriendLocationCh(), makeSendFriendUpdateCh())
 		for v := range friendStatusChangedCh {
 			n := xsoverlay.NewNotificationBuilder().
 				SetTitle(fmt.Sprintf("%s's status changed to %s", v.User.DisplayName, v.User.Status)).
